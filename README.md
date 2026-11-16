@@ -1,14 +1,33 @@
 # NIA Studio AI
 
-## Repository status
+## Recovered source snapshot — 0.6.4
 
-This GitHub repository is not yet a runnable source checkout. The recovered local-only NIA Studio AI 0.6.4 source snapshot has been tested separately; its package metadata was corrected to match the 0.6.4 README and **35 tests passed** in the recovery workspace. That source snapshot has not yet been fully restored into this repository.
+This repository now carries the complete recovered MIT-licensed application source snapshot in [NIA-Studio-AI-0.6.4-restored.zip](./NIA-Studio-AI-0.6.4-restored.zip). The archive contains 73 source, test, documentation and configuration files.
 
-## Runtime limitations
+Restore the working tree locally:
+
+```bash
+unzip -q NIA-Studio-AI-0.6.4-restored.zip
+cd nia-studio-ai
+python -m pip install -r requirements-dev.txt
+python -m pytest -q
+python scripts/assemble_upstreams.py --dry-run
+```
+
+The GitHub Actions workflow verifies the archive checksum, ZIP integrity, package metadata, tests and source-assembly dry-run on Python 3.11, then publishes a temporary extracted-source artifact.
+
+- Archive SHA-256: `c5eb80304ac201b7d27c3e1030c81300db8da4119d7781d6308f17e3bd98f9ae`
+- Package version: `0.6.4`
+- Local recovery verification: **36 tests passed** on Python 3.13.5.
+- License: MIT; see [LICENSE](./LICENSE) and the copy inside the source archive.
+
+## Runtime limitations — not a finished image/video generator
 
 - No image or video model weights are included.
 - No real image or video inference has been demonstrated.
-- ComfyUI and the local inference engine are not bundled as a ready-to-run service.
-- Model code and model-weight licences must be checked separately before adding weights.
+- ComfyUI is an optional external local service and is not bundled or started automatically.
+- The local NIA inference engine is a separate service; it is not embedded in the Studio server.
+- Model weights and optional upstream dependencies have separate licenses and must be reviewed before use.
+- No remote paid provider is enabled by this local-only snapshot.
 
-Do not treat this repository as an installable, fully functional release until the complete source tree is restored here and real inference is validated on target hardware.
+A successful test suite validates application logic and packaging, not model inference or performance on the target Samsung device. Do not describe this as a fully operational image/video generator until real image and video outputs have been generated, opened and inspected on target hardware.
