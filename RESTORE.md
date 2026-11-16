@@ -6,8 +6,8 @@ The source archive is stored at the repository root as `NIA-Studio-AI-0.6.4-rest
    `sha256sum NIA-Studio-AI-0.6.4-restored.zip`
 2. Extract it:
    `unzip -q NIA-Studio-AI-0.6.4-restored.zip`
-3. Enter `nia-studio-ai/`, create a Python 3.11+ virtual environment, and install `requirements-dev.txt`.
-4. Run `python -m pytest -q`, `python scripts/assemble_upstreams.py --dry-run`, and `python -m compileall -q app nia_core nia-autonomous-engine tests scripts`.
+3. From the repository root, run `python scripts/patch_restored_dependencies.py` to add the verified `itsdangerous>=2.2,<3.0` runtime dependency required by Starlette sessions.\n4. Enter `nia-studio-ai/`, create a Python 3.11+ virtual environment, and install `requirements-dev.txt`.
+5. Run `python -m pytest -q`, `python scripts/assemble_upstreams.py --dry-run`, and `python -m compileall -q app nia_core nia-autonomous-engine tests scripts`.
 
 The archive checksum is `c5eb80304ac201b7d27c3e1030c81300db8da4119d7781d6308f17e3bd98f9ae`. The root GitHub Actions workflow performs these checks on every relevant push or pull request and uploads an extracted source snapshot for 14 days.
 
