@@ -32,6 +32,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Install FFmpeg for deterministic MP4 fixture tests
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
       - name: Verify archive checksum, ZIP integrity and package metadata
         run: |
           python - <<'PY'
@@ -73,15 +77,21 @@ jobs:
           PY
       - name: Repair and verify recovered runtime dependencies
         run: python scripts/patch_restored_dependencies.py
-      - name: Install application and test dependencies
-        working-directory: restored/nia-studio-ai
-        run: python -m pip install -r requirements-dev.txt
-      - name: Run tests, source assembly dry-run and bytecode compilation
+      - name: Install application, engine and test dependencies
         working-directory: restored/nia-studio-ai
         run: |
-          python -m pytest -q
+          python -m pip install -r requirements-dev.txt
+          python -m pip install -r nia-autonomous-engine/requirements-engine.txt
+      - name: Run all application, core and local-engine tests
+        working-directory: restored/nia-studio-ai
+        env:
+          PYTHONPATH: nia-autonomous-engine
+        run: python -m pytest -q tests nia_core/tests nia-autonomous-engine/tests
+      - name: Run source assembly dry-run and bytecode compilation
+        working-directory: restored/nia-studio-ai
+        run: |
           python scripts/assemble_upstreams.py --dry-run
-          python -m compileall -q app nia_core nia-autonomous-engine tests scripts
+          python -m compileall -q app nia_core nia-autonomous-engine tests nia-autonomous-engine/tests scripts
       - name: Package extracted source snapshot
         run: |
           python - <<'PY'
