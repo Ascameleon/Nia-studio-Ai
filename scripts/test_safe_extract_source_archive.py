@@ -120,7 +120,7 @@ class SafeExtractTests(unittest.TestCase):
                 destination = root / "out"
                 with self.assertRaises(ValueError):
                     safe_extract(archive, destination)
-                self.assertFalse(any(destination.iterdir()))
+                self.assertFalse(destination.exists())
 
     def test_rejects_duplicate_normalized_paths(self):
         with tempfile.TemporaryDirectory() as temporary:
