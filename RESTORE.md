@@ -14,3 +14,7 @@ The archive checksum is `c5eb80304ac201b7d27c3e1030c81300db8da4119d7781d6308f17e
 The application source is MIT-licensed. Optional upstream projects are not vendored or installed by the dry-run. The manifest records their candidate licenses; inspect the exact upstream revision and notices before incorporating any of them. Model weights are not included and must be licensed separately.
 
 **Runtime boundary:** no model weights, no real image/video inference, and no target-device performance test are included in this recovery.
+
+## Verification evidence
+
+The recovered snapshot was checked locally on Python 3.13.5: 36 tests passed, `scripts/assemble_upstreams.py --dry-run` passed, and `compileall` completed. The checksum and Python 3.11 CI workflow are the authoritative checks for this committed archive; a local test pass does not establish image/video inference or model availability.
