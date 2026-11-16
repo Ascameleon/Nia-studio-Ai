@@ -50,7 +50,6 @@ jobs:
                   "nia-studio-ai/upstream/manifest.json",
               }
               assert required.issubset(names), f"missing archive entries: {required - names}"
-              source.extractall("restored")
 
           root = Path("restored/nia-studio-ai")
           metadata = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
@@ -58,6 +57,8 @@ jobs:
           assert "0.6.4" in (root / "README.md").read_text(encoding="utf-8")
           print(f"Verified {len(names)} archive entries; package version {metadata['project']['version']}")
           PY
+          python scripts/test_safe_extract_source_archive.py
+          python scripts/safe_extract_source_archive.py NIA-Studio-AI-0.6.4-restored.zip restored
       - name: Repair and verify recovered runtime dependencies
         run: python scripts/patch_restored_dependencies.py
       - name: Install application and test dependencies
