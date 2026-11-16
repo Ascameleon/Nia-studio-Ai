@@ -3,7 +3,7 @@ import stat
 import tempfile
 import unittest
 from pathlib import Path
-from zipfile import ZipFile, ZipInfo
+from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 from safe_extract_source_archive import safe_extract
 
@@ -65,6 +65,63 @@ class SafeExtractTests(unittest.TestCase):
                 output.writestr("project/file.txt", "two")
             with self.assertRaisesRegex(ValueError, "Duplicate ZIP member path"):
                 safe_extract(archive, root / "out")
+
+    def test_rejects_too_many_entries_before_extracting(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / "many.zip"
+            with ZipFile(archive, "w") as output:
+                output.writestr("one.txt", "1")
+                output.writestr("two.txt", "2")
+            destination = root / "out"
+            with self.assertRaisesRegex(ValueError, "entry count"):
+                safe_extract(archive, destination, max_entries=1)
+            self.assertFalse((destination / "one.txt").exists())
+
+    def test_rejects_oversized_member_before_extracting(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / "large.zip"
+            with ZipFile(archive, "w") as output:
+                output.writestr("large.txt", "1234")
+            destination = root / "out"
+            with self.assertRaisesRegex(ValueError, "exceeds maximum size"):
+                safe_extract(archive, destination, max_member_size=3)
+            self.assertFalse((destination / "large.txt").exists())
+
+    def test_rejects_total_expanded_size_before_extracting(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / "total.zip"
+            with ZipFile(archive, "w") as output:
+                output.writestr("one.txt", "123")
+                output.writestr("two.txt", "456")
+            destination = root / "out"
+            with self.assertRaisesRegex(ValueError, "expanded size"):
+                safe_extract(archive, destination, max_total_size=5)
+            self.assertFalse((destination / "one.txt").exists())
+
+    def test_rejects_excessive_compression_ratio_before_extracting(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / "compressed.zip"
+            with ZipFile(archive, "w", compression=ZIP_DEFLATED) as output:
+                output.writestr("zeros.bin", b"\\0" * 8192)
+            destination = root / "out"
+            with self.assertRaisesRegex(ValueError, "compression ratio"):
+                safe_extract(archive, destination, max_compression_ratio=10)
+            self.assertFalse((destination / "zeros.bin").exists())
+
+    def test_rejects_invalid_resource_limits(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / "empty.zip"
+            with ZipFile(archive, "w"):
+                pass
+            with self.assertRaisesRegex(ValueError, "positive integers"):
+                safe_extract(archive, root / "out", max_entries=0)
+            with self.assertRaisesRegex(ValueError, "compression ratio"):
+                safe_extract(archive, root / "out", max_compression_ratio=0)
 
 
 if __name__ == "__main__":
