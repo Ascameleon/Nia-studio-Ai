@@ -14,7 +14,7 @@ python -m pytest -q
 python scripts/assemble_upstreams.py --dry-run
 ```
 
-The GitHub Actions workflow verifies the archive checksum, ZIP integrity, package metadata, tests and source-assembly dry-run on Python 3.11, then publishes a temporary extracted-source artifact.
+The GitHub Actions workflow verifies the archive checksum, ZIP integrity and package metadata on Python 3.11. It then applies the repository-owned dependency repair script (the recovered requirements omitted `itsdangerous`, which Starlette `SessionMiddleware` imports), installs the repaired runtime/dev requirements, runs tests and the source-assembly dry-run, and publishes the patched extracted-source artifact.
 
 - Archive SHA-256: `c5eb80304ac201b7d27c3e1030c81300db8da4119d7781d6308f17e3bd98f9ae`
 - Package version: `0.6.4`
