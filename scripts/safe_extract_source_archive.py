@@ -44,6 +44,7 @@ def safe_extract(
             )
 
         seen: set[str] = set()
+        regular_files: set[str] = set()
         total_size = 0
         for member in members:
             name = member.filename
@@ -69,6 +70,13 @@ def safe_extract(
             if file_type not in (0, stat.S_IFREG, stat.S_IFDIR):
                 raise ValueError(f"Unsupported ZIP member type: {name!r}")
 
+            if file_type == stat.S_IFDIR and not member.is_dir():
+                raise ValueError(f"Directory ZIP member must end with '/': {name!r}")
+            if member.is_dir() and file_type == stat.S_IFREG:
+                raise ValueError(f"Directory ZIP member has regular-file metadata: {name!r}")
+            if not member.is_dir():
+                regular_files.add(normalized)
+
             if member.file_size < 0 or member.compress_size < 0:
                 raise ValueError(f"Invalid ZIP member size: {name!r}")
             if member.file_size > max_member_size:
@@ -93,6 +101,19 @@ def safe_extract(
             target = (root / Path(*posix.parts)).resolve()
             if target != root and root not in target.parents:
                 raise ValueError(f"ZIP member escapes extraction directory: {name!r}")
+
+        # A ZIP may be traversal-safe yet structurally impossible: a regular file
+        # cannot also be the parent directory of another member. Detect every
+        # such conflict before extractall so a malformed archive cannot leave a
+        # partially extracted tree.
+        for name in seen:
+            for parent in PurePosixPath(name).parents:
+                parent_name = parent.as_posix()
+                if parent_name != "." and parent_name in regular_files:
+                    raise ValueError(
+                        f"ZIP member path conflicts with regular file: "
+                        f"{parent_name!r} is a parent of {name!r}"
+                    )
 
         archive.extractall(root)
         return len(members)

@@ -112,6 +112,34 @@ class SafeExtractTests(unittest.TestCase):
                 safe_extract(archive, destination, max_compression_ratio=10)
             self.assertFalse((destination / "zeros.bin").exists())
 
+    def test_rejects_regular_file_used_as_parent_before_extracting(self):
+        for entries in (
+            (("project/README.md", "safe"), ("project/README.md/child.txt", "unsafe")),
+            (("project/README.md/child.txt", "unsafe"), ("project/README.md", "safe")),
+        ):
+            with self.subTest(entries=entries), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                archive = root / "conflicting-paths.zip"
+                with ZipFile(archive, "w") as output:
+                    for name, content in entries:
+                        output.writestr(name, content)
+                destination = root / "out"
+                with self.assertRaisesRegex(ValueError, "conflicts with regular file"):
+                    safe_extract(archive, destination)
+                self.assertFalse((destination / "project").exists())
+
+    def test_rejects_directory_metadata_without_directory_path(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / "bad-directory.zip"
+            directory = ZipInfo("project")
+            directory.create_system = 3
+            directory.external_attr = (stat.S_IFDIR | 0o755) << 16
+            with ZipFile(archive, "w") as output:
+                output.writestr(directory, "")
+            with self.assertRaisesRegex(ValueError, "must end with"):
+                safe_extract(archive, root / "out")
+
     def test_rejects_invalid_resource_limits(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
