@@ -12,6 +12,21 @@ MAX_TOTAL_SIZE = 512 * 1024 * 1024
 MAX_COMPRESSION_RATIO = 200
 
 
+def _validate_portable_component(component: str, member_name: str) -> None:
+    """Reject names that alias, target streams, or device files on Windows."""
+    if component.endswith((" ", ".")):
+        raise ValueError(f"Non-portable ZIP path component: {member_name!r}")
+    if any(ord(char) < 32 or char in '<>:"|?*' for char in component):
+        raise ValueError(f"Invalid Windows ZIP path component: {member_name!r}")
+    device_stem = component.split(".", 1)[0].upper()
+    if device_stem in {"CON", "PRN", "AUX", "NUL"} or device_stem in {
+        *(f"COM{number}" for number in range(1, 10)),
+        *(f"LPT{number}" for number in range(1, 10)),
+        "COM¹", "COM²", "COM³", "LPT¹", "LPT²", "LPT³",
+    }:
+        raise ValueError(f"Reserved Windows device name in ZIP path: {member_name!r}")
+
+
 def safe_extract(
     archive_path: str | Path,
     destination: str | Path,
@@ -45,6 +60,7 @@ def safe_extract(
 
         seen: set[str] = set()
         regular_files: set[str] = set()
+        portable_paths: dict[str, str] = {}
         total_size = 0
         for member in members:
             name = member.filename
@@ -60,6 +76,29 @@ def safe_extract(
                 or name in {".", "./"}
             ):
                 raise ValueError(f"Unsafe ZIP member path: {name!r}")
+
+            raw_parts = name.split("/")
+            if member.is_dir():
+                raw_parts = raw_parts[:-1]
+            if not raw_parts or any(part in {"", ".", ".."} for part in raw_parts):
+                raise ValueError(f"Non-canonical ZIP member path: {name!r}")
+            for component in raw_parts:
+                _validate_portable_component(component, name)
+
+            # Windows filesystems are case-insensitive and normalize some names.
+            # Reject aliases before extraction so archive order cannot overwrite a
+            # different source file or merge differently-cased parent directories.
+            original_prefix: list[str] = []
+            for component in raw_parts:
+                original_prefix.append(component)
+                spelling = "/".join(original_prefix)
+                key = spelling.casefold()
+                previous = portable_paths.get(key)
+                if previous is not None and previous != spelling:
+                    raise ValueError(
+                        f"Case-insensitive ZIP path collision: {previous!r} and {spelling!r}"
+                    )
+                portable_paths[key] = spelling
 
             normalized = posix.as_posix().rstrip("/")
             if normalized in seen:
