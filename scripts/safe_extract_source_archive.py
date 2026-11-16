@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import stat
 import sys
+import unicodedata
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from zipfile import ZipFile
 
@@ -92,11 +93,15 @@ def safe_extract(
             for component in raw_parts:
                 original_prefix.append(component)
                 spelling = "/".join(original_prefix)
-                key = spelling.casefold()
+                # NFC collapses canonically equivalent Unicode spellings (for example,
+                # precomposed and combining-accent forms) before case folding. This
+                # prevents one archive from creating aliases on normalization-insensitive
+                # filesystems such as common macOS volumes.
+                key = unicodedata.normalize("NFC", spelling.casefold())
                 previous = portable_paths.get(key)
                 if previous is not None and previous != spelling:
                     raise ValueError(
-                        f"Case-insensitive ZIP path collision: {previous!r} and {spelling!r}"
+                        f"Case-insensitive ZIP path collision after Unicode NFC normalization: {previous!r} and {spelling!r}"
                     )
                 portable_paths[key] = spelling
 
