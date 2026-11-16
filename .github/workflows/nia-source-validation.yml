@@ -106,3 +106,13 @@ jobs:
           path: NIA-Studio-AI-0.6.4-source-restored.zip
           if-no-files-found: error
           retention-days: 14
+
+  validate-portable-zip-paths-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Test portable ZIP path rejection on Windows
+        run: python scripts/test_safe_extract_source_archive.py
