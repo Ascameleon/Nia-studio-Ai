@@ -58,6 +58,8 @@ jobs:
           assert "0.6.4" in (root / "README.md").read_text(encoding="utf-8")
           print(f"Verified {len(names)} archive entries; package version {metadata['project']['version']}")
           PY
+      - name: Repair and verify recovered runtime dependencies
+        run: python scripts/patch_restored_dependencies.py
       - name: Install application and test dependencies
         working-directory: restored/nia-studio-ai
         run: python -m pip install -r requirements-dev.txt
