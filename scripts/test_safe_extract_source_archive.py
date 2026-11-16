@@ -21,6 +21,17 @@ class SafeExtractTests(unittest.TestCase):
             self.assertEqual(count, 2)
             self.assertEqual((destination / "project/README.md").read_text(), "safe")
 
+    def test_rejects_invalid_archive_without_creating_destination(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / "invalid.zip"
+            with ZipFile(archive, "w") as output:
+                output.writestr("../escaped.txt", "unsafe")
+            destination = root / "not-created"
+            with self.assertRaisesRegex(ValueError, "Unsafe ZIP member path"):
+                safe_extract(archive, destination)
+            self.assertFalse(destination.exists())
+
     def test_rejects_parent_traversal_before_extracting_any_file(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -109,7 +120,7 @@ class SafeExtractTests(unittest.TestCase):
                 destination = root / "out"
                 with self.assertRaises(ValueError):
                     safe_extract(archive, destination)
-                self.assertFalse(any(destination.iterdir()))
+                self.assertFalse(destination.exists())
 
     def test_rejects_duplicate_normalized_paths(self):
         with tempfile.TemporaryDirectory() as temporary:

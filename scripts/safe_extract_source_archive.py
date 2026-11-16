@@ -50,9 +50,9 @@ def safe_extract(
     ):
         raise ValueError("ZIP compression ratio limit must be positive")
 
-    root = Path(destination)
-    root.mkdir(parents=True, exist_ok=True)
-    root = root.resolve()
+    # Resolve the intended destination without creating it. Invalid archives
+    # must be rejected without leaving even an empty destination directory.
+    root = Path(destination).resolve()
 
     with ZipFile(archive_path) as archive:
         members = archive.infolist()
@@ -161,6 +161,9 @@ def safe_extract(
                         f"{parent_name!r} is a parent of {name!r}"
                     )
 
+        # Create the destination only after every member and resource limit
+        # has passed preflight validation.
+        root.mkdir(parents=True, exist_ok=True)
         archive.extractall(root)
         return len(members)
 
