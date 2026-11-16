@@ -74,6 +74,23 @@ class SafeExtractTests(unittest.TestCase):
                 self.assertFalse((destination / "project").exists())
                 self.assertFalse((destination / "Project").exists())
 
+    def test_rejects_unicode_normalization_collisions_in_files_and_parents(self):
+        conflicting_archives = (
+            (("project/caf\u00e9.txt", "one"), ("project/cafe\u0301.txt", "two")),
+            (("project/caf\u00e9/one.txt", "one"), ("project/cafe\u0301/two.txt", "two")),
+        )
+        for entries in conflicting_archives:
+            with self.subTest(entries=entries), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                archive = root / "unicode-collision.zip"
+                with ZipFile(archive, "w") as output:
+                    for name, content in entries:
+                        output.writestr(name, content)
+                destination = root / "out"
+                with self.assertRaisesRegex(ValueError, "Case-insensitive ZIP path collision"):
+                    safe_extract(archive, destination)
+                self.assertFalse((destination / "project").exists())
+
     def test_rejects_windows_reserved_stream_and_nonportable_names(self):
         invalid_names = (
             "project/CON.txt",
