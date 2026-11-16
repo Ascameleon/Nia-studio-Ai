@@ -8,13 +8,16 @@ Restore the working tree locally:
 
 ```bash
 unzip -q NIA-Studio-AI-0.6.4-restored.zip
+python scripts/patch_restored_dependencies.py
 cd nia-studio-ai
 python -m pip install -r requirements-dev.txt
 python -m pytest -q
 python scripts/assemble_upstreams.py --dry-run
 ```
 
-The GitHub Actions workflow verifies the archive checksum, ZIP integrity and package metadata on Python 3.11. It then applies the repository-owned dependency repair script (the recovered requirements omitted `itsdangerous`, which Starlette `SessionMiddleware` imports), installs the repaired runtime/dev requirements, runs tests and the source-assembly dry-run, and publishes the patched extracted-source artifact.
+Run the dependency-repair script from the repository root immediately after extraction. The recovered requirements omit `itsdangerous`, which Starlette's `SessionMiddleware` imports at runtime; the repository-owned script adds the verified `itsdangerous>=2.2,<3.0` constraint exactly once. Installing dependencies before this repair can leave the local environment unable to import the application.
+
+The GitHub Actions workflow verifies the archive checksum, ZIP integrity and package metadata on Python 3.11. It applies the same dependency repair, installs the repaired runtime/dev requirements, runs tests and the source-assembly dry-run, and publishes the patched extracted-source artifact.
 
 - Archive SHA-256: `c5eb80304ac201b7d27c3e1030c81300db8da4119d7781d6308f17e3bd98f9ae`
 - Package version: `0.6.4`
