@@ -1,0 +1,94 @@
+name: NIA Studio AI source snapshot validation
+
+on:
+  push:
+    paths:
+      - "NIA-Studio-AI-0.6.4-restored.zip"
+      - ".github/workflows/nia-source-validation.yml"
+      - "README.md"
+      - "RESTORE.md"
+  pull_request:
+    paths:
+      - "NIA-Studio-AI-0.6.4-restored.zip"
+      - ".github/workflows/nia-source-validation.yml"
+      - "README.md"
+      - "RESTORE.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-source-snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Verify archive checksum, ZIP integrity and package metadata
+        run: |
+          python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          from zipfile import ZipFile
+          import tomllib
+
+          archive = Path("NIA-Studio-AI-0.6.4-restored.zip")
+          expected = "c5eb80304ac201b7d27c3e1030c81300db8da4119d7781d6308f17e3bd98f9ae"
+          actual = sha256(archive.read_bytes()).hexdigest()
+          assert actual == expected, f"archive checksum mismatch: {actual}"
+
+          with ZipFile(archive) as source:
+              assert source.testzip() is None, "ZIP CRC verification failed"
+              names = set(source.namelist())
+              required = {
+                  "nia-studio-ai/pyproject.toml",
+                  "nia-studio-ai/README.md",
+                  "nia-studio-ai/LICENSE",
+                  "nia-studio-ai/tests/test_release_metadata.py",
+                  "nia-studio-ai/upstream/manifest.json",
+              }
+              assert required.issubset(names), f"missing archive entries: {required - names}"
+              source.extractall("restored")
+
+          root = Path("restored/nia-studio-ai")
+          metadata = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+          assert metadata["project"]["version"] == "0.6.4"
+          assert "0.6.4" in (root / "README.md").read_text(encoding="utf-8")
+          print(f"Verified {len(names)} archive entries; package version {metadata['project']['version']}")
+          PY
+      - name: Install application and test dependencies
+        working-directory: restored/nia-studio-ai
+        run: python -m pip install -r requirements-dev.txt
+      - name: Run tests, source assembly dry-run and bytecode compilation
+        working-directory: restored/nia-studio-ai
+        run: |
+          python -m pytest -q
+          python scripts/assemble_upstreams.py --dry-run
+          python -m compileall -q app nia_core nia-autonomous-engine tests scripts
+      - name: Package extracted source snapshot
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZIP_DEFLATED, ZipFile
+
+          root = Path("restored/nia-studio-ai")
+          output = Path("NIA-Studio-AI-0.6.4-source-restored.zip")
+          excluded = {".git", ".pytest_cache", "__pycache__", ".mypy_cache", ".ruff_cache", "build", "dist"}
+          with ZipFile(output, "w", ZIP_DEFLATED, compresslevel=9) as archive:
+              for path in sorted(root.rglob("*")):
+                  relative = path.relative_to(root)
+                  if not path.is_file() or any(part in excluded for part in relative.parts) or path.suffix == ".pyc":
+                      continue
+                  archive.write(path, Path("nia-studio-ai") / relative)
+          assert output.stat().st_size > 0
+          print(f"Created {output} ({output.stat().st_size} bytes)")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NIA-Studio-AI-0.6.4-source-restored
+          path: NIA-Studio-AI-0.6.4-source-restored.zip
+          if-no-files-found: error
+          retention-days: 14
