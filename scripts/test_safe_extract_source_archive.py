@@ -205,6 +205,9 @@ class SafeExtractTests(unittest.TestCase):
                 safe_extract(archive, root / "out", max_entries=0)
             with self.assertRaisesRegex(ValueError, "compression ratio"):
                 safe_extract(archive, root / "out", max_compression_ratio=0)
+            for invalid_ratio in (float("nan"), float("inf"), float("-inf")):
+                with self.subTest(invalid_ratio=invalid_ratio), self.assertRaisesRegex(ValueError, "compression ratio"):
+                    safe_extract(archive, root / "out", max_compression_ratio=invalid_ratio)
 
 
 if __name__ == "__main__":

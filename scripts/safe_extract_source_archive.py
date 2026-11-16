@@ -1,6 +1,7 @@
 """Extract a source ZIP without allowing traversal, special files, or ZIP bombs."""
 from __future__ import annotations
 
+import math
 import stat
 import sys
 import unicodedata
@@ -44,6 +45,7 @@ def safe_extract(
     if (
         isinstance(max_compression_ratio, bool)
         or not isinstance(max_compression_ratio, (int, float))
+        or (isinstance(max_compression_ratio, float) and not math.isfinite(max_compression_ratio))
         or max_compression_ratio <= 0
     ):
         raise ValueError("ZIP compression ratio limit must be positive")
