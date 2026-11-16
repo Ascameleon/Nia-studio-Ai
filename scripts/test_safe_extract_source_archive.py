@@ -56,6 +56,44 @@ class SafeExtractTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Unsupported ZIP member type"):
                 safe_extract(archive, root / "out")
 
+    def test_rejects_case_insensitive_file_and_parent_collisions(self):
+        conflicting_archives = (
+            (("project/Readme.md", "one"), ("project/README.md", "two")),
+            (("Project/one.txt", "one"), ("project/two.txt", "two")),
+        )
+        for entries in conflicting_archives:
+            with self.subTest(entries=entries), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                archive = root / "case-collision.zip"
+                with ZipFile(archive, "w") as output:
+                    for name, content in entries:
+                        output.writestr(name, content)
+                destination = root / "out"
+                with self.assertRaisesRegex(ValueError, "Case-insensitive ZIP path collision"):
+                    safe_extract(archive, destination)
+                self.assertFalse((destination / "project").exists())
+                self.assertFalse((destination / "Project").exists())
+
+    def test_rejects_windows_reserved_stream_and_nonportable_names(self):
+        invalid_names = (
+            "project/CON.txt",
+            "project/lpt1.log",
+            "project/file.txt:payload",
+            "project/trailing.",
+            "project/trailing ",
+            "project/bad?.txt",
+        )
+        for member in invalid_names:
+            with self.subTest(member=member), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                archive = root / "nonportable.zip"
+                with ZipFile(archive, "w") as output:
+                    output.writestr(member, "unsafe")
+                destination = root / "out"
+                with self.assertRaises(ValueError):
+                    safe_extract(archive, destination)
+                self.assertFalse(any(destination.iterdir()))
+
     def test_rejects_duplicate_normalized_paths(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
