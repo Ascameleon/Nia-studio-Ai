@@ -54,7 +54,7 @@ def main() -> int:
         return 2
     try:
         count = safe_extract(sys.argv[1], sys.argv[2])
-    except (OSError, ValueError, Exception) as exc:
+    except Exception as exc:
         print(f"Safe ZIP extraction failed: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 1
     print(f"Safely extracted {count} ZIP entries.")
