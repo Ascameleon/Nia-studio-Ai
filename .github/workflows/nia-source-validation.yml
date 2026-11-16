@@ -28,8 +28,8 @@ jobs:
   validate-source-snapshot:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Install FFmpeg for deterministic MP4 fixture tests
@@ -110,7 +110,7 @@ jobs:
           assert output.stat().st_size > 0
           print(f"Created {output} ({output.stat().st_size} bytes)")
           PY
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: NIA-Studio-AI-0.6.4-source-restored
           path: NIA-Studio-AI-0.6.4-source-restored.zip
@@ -120,8 +120,8 @@ jobs:
   validate-portable-zip-paths-windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Test portable ZIP path rejection on Windows
