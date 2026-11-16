@@ -7,12 +7,18 @@ on:
       - ".github/workflows/nia-source-validation.yml"
       - "README.md"
       - "RESTORE.md"
+      - "scripts/patch_restored_dependencies.py"
+      - "scripts/safe_extract_source_archive.py"
+      - "scripts/test_safe_extract_source_archive.py"
   pull_request:
     paths:
       - "NIA-Studio-AI-0.6.4-restored.zip"
       - ".github/workflows/nia-source-validation.yml"
       - "README.md"
       - "RESTORE.md"
+      - "scripts/patch_restored_dependencies.py"
+      - "scripts/safe_extract_source_archive.py"
+      - "scripts/test_safe_extract_source_archive.py"
   workflow_dispatch:
 
 permissions:
