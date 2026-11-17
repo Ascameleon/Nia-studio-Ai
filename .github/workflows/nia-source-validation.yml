@@ -8,6 +8,7 @@ on:
       - "README.md"
       - "RESTORE.md"
       - "scripts/patch_restored_dependencies.py"
+      - "scripts/test_patch_restored_dependencies.py"
       - "scripts/safe_extract_source_archive.py"
       - "scripts/test_safe_extract_source_archive.py"
   pull_request:
@@ -17,6 +18,7 @@ on:
       - "README.md"
       - "RESTORE.md"
       - "scripts/patch_restored_dependencies.py"
+      - "scripts/test_patch_restored_dependencies.py"
       - "scripts/safe_extract_source_archive.py"
       - "scripts/test_safe_extract_source_archive.py"
   workflow_dispatch:
@@ -63,6 +65,7 @@ jobs:
 
           print(f"Verified {len(names)} archive entries; checksum and ZIP CRC are valid")
           PY
+          python scripts/test_patch_restored_dependencies.py
           python scripts/test_safe_extract_source_archive.py
           python scripts/safe_extract_source_archive.py NIA-Studio-AI-0.6.4-restored.zip restored
           python - <<'PY'
