@@ -61,6 +61,23 @@ class DependencyRepairTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "symlink requirements file"):
                 locate_project_root(base)
 
+    def test_existing_fixed_temp_symlink_is_not_followed_or_overwritten(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            project = base / "nia-studio-ai"
+            project.mkdir()
+            requirements = project / "requirements.txt"
+            requirements.write_text("fastapi>=0.115,<1.0\n", encoding="utf-8")
+            outside = base / "outside.txt"
+            outside.write_text("do-not-modify\n", encoding="utf-8")
+            (project / ".requirements.txt.tmp").symlink_to(outside)
+
+            repair_dependencies(base)
+
+            self.assertEqual(outside.read_text(encoding="utf-8"), "do-not-modify\n")
+            self.assertTrue((project / ".requirements.txt.tmp").is_symlink())
+            self.assertEqual(requirements.read_text(encoding="utf-8").splitlines().count(REQUIRED), 1)
+
     def test_rejects_unexpected_or_duplicate_dependency_constraints(self):
         for source in (
             "itsdangerous==2.1.0\n",
