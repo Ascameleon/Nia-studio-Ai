@@ -1,4 +1,6 @@
 """Regression tests for the NIA restored dependency repair target selection."""
+import os
+import stat
 import tempfile
 import unittest
 from pathlib import Path
@@ -19,6 +21,22 @@ class DependencyRepairTests(unittest.TestCase):
             self.assertEqual(repair_dependencies(base), project.resolve())
             lines = requirements.read_text(encoding="utf-8").splitlines()
             self.assertEqual(lines.count(REQUIRED), 1)
+
+
+    @unittest.skipUnless(os.name == "posix", "POSIX permission bits are not portable")
+    def test_repair_preserves_existing_requirements_file_mode(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            project = base / "nia-studio-ai"
+            project.mkdir()
+            requirements = project / "requirements.txt"
+            requirements.write_text("fastapi>=0.115,<1.0\\n", encoding="utf-8")
+            requirements.chmod(0o640)
+
+            repair_dependencies(base)
+
+            self.assertEqual(stat.S_IMODE(requirements.stat().st_mode), 0o640)
+            self.assertEqual(requirements.read_text(encoding="utf-8").splitlines().count(REQUIRED), 1)
 
     def test_refuses_ambiguous_roots_without_modifying_either_tree(self):
         with tempfile.TemporaryDirectory() as temporary:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import stat
 import tempfile
 from pathlib import Path
 
@@ -43,9 +44,13 @@ def locate_project_root(base_dir: Path) -> Path:
 
 
 def _replace_text_atomically(path: Path, content: str) -> None:
-    """Write a sibling temporary file safely, then atomically replace the target."""
+    """Atomically replace a regular file without changing its permission bits."""
     temporary: Path | None = None
     try:
+        metadata = path.lstat()
+        if not stat.S_ISREG(metadata.st_mode):
+            raise ValueError(f"refusing to replace non-regular requirements file: {path.name}")
+        original_mode = stat.S_IMODE(metadata.st_mode)
         with tempfile.NamedTemporaryFile(
             mode="w",
             encoding="utf-8",
@@ -56,6 +61,11 @@ def _replace_text_atomically(path: Path, content: str) -> None:
         ) as stream:
             temporary = Path(stream.name)
             stream.write(content)
+            stream.flush()
+            if hasattr(os, "fchmod"):
+                os.fchmod(stream.fileno(), original_mode)
+            else:
+                os.chmod(temporary, original_mode)
         os.replace(temporary, path)
     except Exception:
         if temporary is not None:
