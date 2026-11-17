@@ -2,6 +2,8 @@
 """Apply the audited runtime dependency repair to one extracted NIA 0.6.4 snapshot."""
 from __future__ import annotations
 
+import os
+import tempfile
 from pathlib import Path
 
 REQUIRED = "itsdangerous>=2.2,<3.0"
@@ -40,6 +42,27 @@ def locate_project_root(base_dir: Path) -> Path:
     return matches[0]
 
 
+def _replace_text_atomically(path: Path, content: str) -> None:
+    """Write a sibling temporary file safely, then atomically replace the target."""
+    temporary: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as stream:
+            temporary = Path(stream.name)
+            stream.write(content)
+        os.replace(temporary, path)
+    except Exception:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+        raise
+
+
 def repair_dependencies(base_dir: Path) -> Path:
     """Repair the one unambiguous extracted snapshot and return its resolved root."""
     root = locate_project_root(base_dir)
@@ -49,9 +72,7 @@ def repair_dependencies(base_dir: Path) -> Path:
 
     if not matches:
         lines.extend(["", "# Required by Starlette SessionMiddleware (runtime dependency).", REQUIRED])
-        temporary = requirements.with_name(f".{requirements.name}.tmp")
-        temporary.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
-        temporary.replace(requirements)
+        _replace_text_atomically(requirements, "\n".join(lines).rstrip() + "\n")
     elif matches != [REQUIRED]:
         raise ValueError(f"unexpected itsdangerous constraint(s): {matches!r}")
 
